@@ -1,0 +1,80 @@
+---
+title: "Practical Machine Learning Course Project"
+output: html_document
+author: Ioannis Petridis
+date: December 5, 2018
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+```
+
+## Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Data
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+### Data Loading and preprocessing
+After data loading, the columns with NA values need to be removed. We also remove the first 7 columns, since they are not related to our model. Before we build the model, we split the training data set into training and cross validation datasets.
+```{r}
+# read data and NA values. Afterinspection NA values correspond to NA, blank and #DIV/0! 
+training_data <- read.csv('../pml-training.csv', na.strings = c("NA","","#DIV/0!")) 
+test_data <- read.csv('../pml-testing.csv', na.strings = c("NA","","#DIV/0!"))
+
+#remove NA values from both sets
+tr_data<-training_data[,colSums(is.na(training_data))==0]
+tr_data<-tr_data[,-(1:7)]
+ts_data<-test_data[,colSums(is.na(test_data))==0]
+ts_data<-ts_data[,-(1:7)]
+
+# finalize train, cross-validation and test data sets
+inTrain<-createDataPartition(tr_data$classe, p=0.75, list=FALSE)
+train<-tr_data[inTrain,]
+cv<-tr_data[-inTrain,]
+test<-ts_data
+```
+
+## Building the model and predicting
+We create a model to predict the dataset.
+```{r}
+#decision tree
+dtree<-train(classe~.,method="rpart",data=train)
+```
+### 1.Validating...
+```{r}
+# use cross validation dataset
+cv_prediction<-predict(dtree,cv)
+confusionMatrix(cv$classe,cv_prediction)
+```
+
+As we can see the accuracy is pretty low (0.4967). So we will proceed with the creation of another model
+```{r}
+#decision tree
+dtree2<-randomForest(classe~.,data=train, ntree=200)
+```
+### 2.Validating...
+```{r}
+# use cross validation dataset
+cv_prediction2<-predict(dtree2,cv)
+confusionMatrix(cv$classe,cv_prediction2)
+```
+The random forest model gives a high accuracy of 0.9945. Therefore we use this model to predict the output of the test data
+
+## Predicting the dataset
+```{r}
+test_prediction<-predict(dtree2,test)
+test_prediction
+```
